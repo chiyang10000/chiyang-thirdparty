@@ -1,0 +1,660 @@
+From 9026df72f5aa1f96b2aa3966157a330315e12bce Mon Sep 17 00:00:00 2001
+From: Chiyang Wan <chiyang10000@gmail.com>
+Date: Sat, 15 Aug 2020 18:13:03 +0800
+Subject: [PATCH 1/6] Modify thirdparty library linking
+
+---
+ cmake_modules/FindGTest.cmake           |  2 +-
+ cmake_modules/FindLZ4.cmake             |  2 +-
+ cmake_modules/FindProtobuf.cmake        |  4 ++--
+ cmake_modules/FindSnappy.cmake          |  2 +-
+ cmake_modules/FindZLIB.cmake            |  2 +-
+ cmake_modules/FindZSTD.cmake            |  4 ++--
+ cmake_modules/ThirdpartyToolchain.cmake | 16 ++++++++--------
+ 7 files changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/cmake_modules/FindGTest.cmake b/cmake_modules/FindGTest.cmake
+index 3ae89543..b6a99fe0 100644
+--- a/cmake_modules/FindGTest.cmake
++++ b/cmake_modules/FindGTest.cmake
+@@ -38,7 +38,7 @@ if (GTEST_INCLUDE_DIR AND GTEST_LIBRARIES)
+   set (GTEST_HEADER_NAME gmock/gmock.h)
+   set (GTEST_HEADER ${GTEST_INCLUDE_DIR}/${GTEST_HEADER_NAME})
+   set (GTEST_LIB_NAME gmock)
+-  set (GMOCK_STATIC_LIB ${GTEST_LIBS}/${CMAKE_STATIC_LIBRARY_PREFIX}${GTEST_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
++  set (GMOCK_STATIC_LIB ${GTEST_LIBS}/${CMAKE_STATIC_LIBRARY_PREFIX}${GTEST_LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX})
+ else ()
+   set (GTEST_FOUND FALSE)
+ endif ()
+diff --git a/cmake_modules/FindLZ4.cmake b/cmake_modules/FindLZ4.cmake
+index e522a6f7..1700f034 100644
+--- a/cmake_modules/FindLZ4.cmake
++++ b/cmake_modules/FindLZ4.cmake
+@@ -38,7 +38,7 @@ if (LZ4_INCLUDE_DIR AND LZ4_LIBRARIES)
+   set (LZ4_HEADER_NAME lz4.h)
+   set (LZ4_HEADER ${LZ4_INCLUDE_DIR}/${LZ4_HEADER_NAME})
+   set (LZ4_LIB_NAME lz4)
+-  set (LZ4_STATIC_LIB ${LZ4_LIBS}/${CMAKE_STATIC_LIBRARY_PREFIX}${LZ4_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
++  set (LZ4_STATIC_LIB ${LZ4_LIBS}/${CMAKE_STATIC_LIBRARY_PREFIX}${LZ4_LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX})
+ else ()
+   set (LZ4_FOUND FALSE)
+ endif ()
+diff --git a/cmake_modules/FindProtobuf.cmake b/cmake_modules/FindProtobuf.cmake
+index d901c55a..e106eb3f 100644
+--- a/cmake_modules/FindProtobuf.cmake
++++ b/cmake_modules/FindProtobuf.cmake
+@@ -54,8 +54,8 @@ if (PROTOBUF_INCLUDE_DIR AND PROTOBUF_LIBRARY AND PROTOC_LIBRARY AND PROTOBUF_EX
+   get_filename_component (PROTOBUF_LIBS ${PROTOBUF_LIBRARY} PATH)
+   set (PROTOBUF_LIB_NAME protobuf)
+   set (PROTOC_LIB_NAME protoc)
+-  set (PROTOBUF_STATIC_LIB ${PROTOBUF_LIBS}/${CMAKE_STATIC_LIBRARY_PREFIX}${PROTOBUF_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
+-  set (PROTOC_STATIC_LIB ${PROTOBUF_LIBS}/${CMAKE_STATIC_LIBRARY_PREFIX}${PROTOC_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
++  set (PROTOBUF_STATIC_LIB ${PROTOBUF_LIBS}/${CMAKE_STATIC_LIBRARY_PREFIX}${PROTOBUF_LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX})
++  set (PROTOC_STATIC_LIB ${PROTOBUF_LIBS}/${CMAKE_STATIC_LIBRARY_PREFIX}${PROTOC_LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX})
+ else ()
+   set (PROTOBUF_FOUND FALSE)
+ endif ()
+diff --git a/cmake_modules/FindSnappy.cmake b/cmake_modules/FindSnappy.cmake
+index 5aeb88e7..c3db9b11 100644
+--- a/cmake_modules/FindSnappy.cmake
++++ b/cmake_modules/FindSnappy.cmake
+@@ -38,7 +38,7 @@ if (SNAPPY_INCLUDE_DIR AND SNAPPY_LIBRARIES)
+   set (SNAPPY_HEADER_NAME snappy.h)
+   set (SNAPPY_HEADER ${SNAPPY_INCLUDE_DIR}/${SNAPPY_HEADER_NAME})
+   set (SNAPPY_LIB_NAME snappy)
+-  set (SNAPPY_STATIC_LIB ${SNAPPY_LIBS}/${CMAKE_STATIC_LIBRARY_PREFIX}${SNAPPY_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
++  set (SNAPPY_STATIC_LIB ${SNAPPY_LIBS}/${CMAKE_STATIC_LIBRARY_PREFIX}${SNAPPY_LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX})
+ else ()
+   set (SNAPPY_FOUND FALSE)
+ endif ()
+diff --git a/cmake_modules/FindZLIB.cmake b/cmake_modules/FindZLIB.cmake
+index 6c09640e..2b77f15f 100644
+--- a/cmake_modules/FindZLIB.cmake
++++ b/cmake_modules/FindZLIB.cmake
+@@ -41,7 +41,7 @@ if (ZLIB_INCLUDE_DIR AND ZLIB_LIBRARIES)
+   get_filename_component (ZLIB_LIBS ${ZLIB_LIBRARIES} PATH )
+   set (ZLIB_HEADER_NAME zlib.h)
+   set (ZLIB_HEADER ${ZLIB_INCLUDE_DIR}/${ZLIB_HEADER_NAME})
+-  set (ZLIB_STATIC_LIB ${ZLIB_LIBS}/${CMAKE_STATIC_LIBRARY_PREFIX}${ZLIB_STATIC_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
++  set (ZLIB_STATIC_LIB ${ZLIB_LIBS}/${CMAKE_STATIC_LIBRARY_PREFIX}${ZLIB_STATIC_LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX})
+ else ()
+   set (ZLIB_FOUND FALSE)
+ endif ()
+diff --git a/cmake_modules/FindZSTD.cmake b/cmake_modules/FindZSTD.cmake
+index e0889769..c6e29781 100644
+--- a/cmake_modules/FindZSTD.cmake
++++ b/cmake_modules/FindZSTD.cmake
+@@ -32,7 +32,7 @@ find_path (ZSTD_INCLUDE_DIR zstd.h HINTS
+         NO_DEFAULT_PATH
+         PATH_SUFFIXES "include")
+ 
+-find_library (ZSTD_LIBRARIES NAMES ${ZSTD_STATIC_LIB_NAME} HINTS
++find_library (ZSTD_LIBRARIES NAMES libzstd${CMAKE_SHARED_LIBRARY_SUFFIX} HINTS
+         ${_zstd_path}
+         PATH_SUFFIXES "lib")
+ 
+@@ -41,7 +41,7 @@ if (ZSTD_INCLUDE_DIR AND ZSTD_LIBRARIES)
+   get_filename_component (ZSTD_LIBS ${ZSTD_LIBRARIES} PATH)
+   set (ZSTD_HEADER_NAME zstd.h)
+   set (ZSTD_HEADER ${ZSTD_INCLUDE_DIR}/${ZSTD_HEADER_NAME})
+-  set (ZSTD_STATIC_LIB ${ZSTD_LIBS}/${ZSTD_STATIC_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
++  set (ZSTD_STATIC_LIB ${ZSTD_LIBS}/${ZSTD_STATIC_LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX})
+ else ()
+   set (ZSTD_FOUND FALSE)
+ endif ()
+diff --git a/cmake_modules/ThirdpartyToolchain.cmake b/cmake_modules/ThirdpartyToolchain.cmake
+index b70540b6..e10dda8e 100644
+--- a/cmake_modules/ThirdpartyToolchain.cmake
++++ b/cmake_modules/ThirdpartyToolchain.cmake
+@@ -65,7 +65,7 @@ if (NOT "${SNAPPY_HOME}" STREQUAL "")
+ else ()
+   set(SNAPPY_HOME "${THIRDPARTY_DIR}/snappy_ep-install")
+   set(SNAPPY_INCLUDE_DIR "${SNAPPY_HOME}/include")
+-  set(SNAPPY_STATIC_LIB "${SNAPPY_HOME}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}snappy${CMAKE_STATIC_LIBRARY_SUFFIX}")
++  set(SNAPPY_STATIC_LIB "${SNAPPY_HOME}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}snappy${CMAKE_SHARED_LIBRARY_SUFFIX}")
+   set(SNAPPY_CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${SNAPPY_HOME}
+                         -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_LIBDIR=lib)
+ 
+@@ -107,7 +107,7 @@ else ()
+   else ()
+     set(ZLIB_STATIC_LIB_NAME z)
+   endif ()
+-  set(ZLIB_STATIC_LIB "${ZLIB_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${ZLIB_STATIC_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
++  set(ZLIB_STATIC_LIB "${ZLIB_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${ZLIB_STATIC_LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+   set(ZLIB_CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${ZLIB_PREFIX}
+                       -DBUILD_SHARED_LIBS=OFF)
+ 
+@@ -136,7 +136,7 @@ endif ()
+ # Zstd
+ 
+ if (NOT "${ZSTD_HOME}" STREQUAL "")
+-  find_package (zstd REQUIRED)
++  find_package (ZSTD REQUIRED)
+   set(ZSTD_VENDORED FALSE)
+ else ()
+   set(ZSTD_HOME "${THIRDPARTY_DIR}/zstd_ep-install")
+@@ -149,7 +149,7 @@ else ()
+   else ()
+     set(ZSTD_STATIC_LIB_NAME zstd)
+   endif ()
+-  set(ZSTD_STATIC_LIB "${ZSTD_HOME}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${ZSTD_STATIC_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
++  set(ZSTD_STATIC_LIB "${ZSTD_HOME}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${ZSTD_STATIC_LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+   set(ZSTD_CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${ZSTD_HOME}
+           -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_LIBDIR=lib)
+ 
+@@ -190,7 +190,7 @@ if (NOT "${LZ4_HOME}" STREQUAL "")
+ else ()
+   set(LZ4_PREFIX "${THIRDPARTY_DIR}/lz4_ep-install")
+   set(LZ4_INCLUDE_DIR "${LZ4_PREFIX}/include")
+-  set(LZ4_STATIC_LIB "${LZ4_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}lz4${CMAKE_STATIC_LIBRARY_SUFFIX}")
++  set(LZ4_STATIC_LIB "${LZ4_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}lz4${CMAKE_SHARED_LIBRARY_SUFFIX}")
+   set(LZ4_CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LZ4_PREFIX}
+                      -DCMAKE_INSTALL_LIBDIR=lib
+                      -DBUILD_SHARED_LIBS=OFF)
+@@ -247,7 +247,7 @@ if (BUILD_CPP_TESTS)
+   else ()
+     set(GTEST_PREFIX "${THIRDPARTY_DIR}/googletest_ep-install")
+     set(GTEST_INCLUDE_DIR "${GTEST_PREFIX}/include")
+-    set(GMOCK_STATIC_LIB "${GTEST_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gmock${CMAKE_STATIC_LIBRARY_SUFFIX}")
++    set(GMOCK_STATIC_LIB "${GTEST_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gmock${CMAKE_SHARED_LIBRARY_SUFFIX}")
+     set(GTEST_SRC_URL "https://github.com/google/googletest/archive/release-${GTEST_VERSION}.tar.gz")
+     if(APPLE)
+       set(GTEST_CMAKE_CXX_FLAGS " -DGTEST_USE_OWN_TR1_TUPLE=1 -Wno-unused-value -Wno-ignored-attributes")
+@@ -305,8 +305,8 @@ else ()
+   else ()
+     set(PROTOBUF_STATIC_LIB_PREFIX ${CMAKE_STATIC_LIBRARY_PREFIX})
+   endif ()
+-  set(PROTOBUF_STATIC_LIB "${PROTOBUF_PREFIX}/lib/${PROTOBUF_STATIC_LIB_PREFIX}protobuf${CMAKE_STATIC_LIBRARY_SUFFIX}")
+-  set(PROTOC_STATIC_LIB "${PROTOBUF_PREFIX}/lib/${PROTOBUF_STATIC_LIB_PREFIX}protoc${CMAKE_STATIC_LIBRARY_SUFFIX}")
++  set(PROTOBUF_STATIC_LIB "${PROTOBUF_PREFIX}/lib/${PROTOBUF_STATIC_LIB_PREFIX}protobuf${CMAKE_SHARED_LIBRARY_SUFFIX}")
++  set(PROTOC_STATIC_LIB "${PROTOBUF_PREFIX}/lib/${PROTOBUF_STATIC_LIB_PREFIX}protoc${CMAKE_SHARED_LIBRARY_SUFFIX}")
+   set(PROTOBUF_EXECUTABLE "${PROTOBUF_PREFIX}/bin/protoc${CMAKE_EXECUTABLE_SUFFIX}")
+ 
+   if (CMAKE_VERSION VERSION_GREATER "3.7")
+-- 
+2.20.1 (Apple Git-117)
+
+
+From f49ad80c5c94cb9ad0afa213605f112c5f9a2b52 Mon Sep 17 00:00:00 2001
+From: Chiyang Wan <chiyang10000@gmail.com>
+Date: Tue, 25 Aug 2020 17:23:55 +0800
+Subject: [PATCH 2/6] Add TIME data type
+
+---
+ c++/include/orc/Type.hh | 3 ++-
+ c++/src/ColumnReader.cc | 1 +
+ c++/src/ColumnWriter.cc | 1 +
+ c++/src/Statistics.cc   | 1 +
+ c++/src/TypeImpl.cc     | 7 +++++++
+ c++/src/Writer.cc       | 4 ++++
+ proto/orc_proto.proto   | 2 ++
+ 7 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/c++/include/orc/Type.hh b/c++/include/orc/Type.hh
+index c0cbf2d6..c8e08acb 100644
+--- a/c++/include/orc/Type.hh
++++ b/c++/include/orc/Type.hh
+@@ -43,7 +43,8 @@ namespace orc {
+     DECIMAL = 14,
+     DATE = 15,
+     VARCHAR = 16,
+-    CHAR = 17
++    CHAR = 17,
++    TIME = 101,
+   };
+ 
+   class Type {
+diff --git a/c++/src/ColumnReader.cc b/c++/src/ColumnReader.cc
+index ab526a5a..1542c84f 100644
+--- a/c++/src/ColumnReader.cc
++++ b/c++/src/ColumnReader.cc
+@@ -1754,6 +1754,7 @@ namespace orc {
+   std::unique_ptr<ColumnReader> buildReader(const Type& type,
+                                             StripeStreams& stripe) {
+     switch (static_cast<int64_t>(type.getKind())) {
++    case TIME:
+     case DATE:
+     case INT:
+     case LONG:
+diff --git a/c++/src/ColumnWriter.cc b/c++/src/ColumnWriter.cc
+index 30d96acf..fc19f2cb 100644
+--- a/c++/src/ColumnWriter.cc
++++ b/c++/src/ColumnWriter.cc
+@@ -2900,6 +2900,7 @@ namespace orc {
+                                  type,
+                                  factory,
+                                  options));
++      case TIME:
+       case INT:
+       case LONG:
+       case SHORT:
+diff --git a/c++/src/Statistics.cc b/c++/src/Statistics.cc
+index 645ae31e..10b51fa9 100644
+--- a/c++/src/Statistics.cc
++++ b/c++/src/Statistics.cc
+@@ -379,6 +379,7 @@ namespace orc {
+       case BOOLEAN:
+         return std::unique_ptr<MutableColumnStatistics>(
+           new BooleanColumnStatisticsImpl());
++      case TIME:
+       case BYTE:
+       case INT:
+       case LONG:
+diff --git a/c++/src/TypeImpl.cc b/c++/src/TypeImpl.cc
+index c154f2af..1920a6bb 100644
+--- a/c++/src/TypeImpl.cc
++++ b/c++/src/TypeImpl.cc
+@@ -210,6 +210,8 @@ namespace orc {
+       result << "decimal(" << precision << "," << scale << ")";
+       return result.str();
+     }
++    case TIME:
++      return "time";
+     case DATE:
+       return "date";
+     case VARCHAR: {
+@@ -238,6 +240,7 @@ namespace orc {
+     case INT:
+     case LONG:
+     case DATE:
++    case TIME:
+       return std::unique_ptr<ColumnVectorBatch>
+         (new LongVectorBatch(capacity, memoryPool));
+ 
+@@ -375,6 +378,10 @@ namespace orc {
+       return std::unique_ptr<Type>
+         (new TypeImpl(static_cast<TypeKind>(type.kind())));
+ 
++    case proto::Type_Kind_TIME:
++      return std::unique_ptr<Type>
++        (new TypeImpl(static_cast<TypeKind>(proto::Type_Kind_LONG)));
++
+     case proto::Type_Kind_CHAR:
+     case proto::Type_Kind_VARCHAR:
+       return std::unique_ptr<Type>
+diff --git a/c++/src/Writer.cc b/c++/src/Writer.cc
+index 81589902..6f7fe82f 100644
+--- a/c++/src/Writer.cc
++++ b/c++/src/Writer.cc
+@@ -591,6 +591,10 @@ namespace orc {
+       protoType.set_kind(proto::Type_Kind_DECIMAL);
+       break;
+     }
++    case TIME: {
++      protoType.set_kind(proto::Type_Kind_TIME);
++      break;
++    }
+     case DATE: {
+       protoType.set_kind(proto::Type_Kind_DATE);
+       break;
+diff --git a/proto/orc_proto.proto b/proto/orc_proto.proto
+index 170f0775..0494ed8f 100644
+--- a/proto/orc_proto.proto
++++ b/proto/orc_proto.proto
+@@ -213,6 +213,8 @@ message Type {
+     VARCHAR = 16;
+     CHAR = 17;
+     TIMESTAMP_INSTANT = 18;
++
++    TIME = 101;
+   }
+   optional Kind kind = 1;
+   repeated uint32 subtypes = 2 [packed=true];
+-- 
+2.20.1 (Apple Git-117)
+
+
+From c89231f64c35e8396afacc19c94b7179ad03093c Mon Sep 17 00:00:00 2001
+From: Chiyang Wan <chiyang10000@gmail.com>
+Date: Sat, 15 Aug 2020 18:13:08 +0800
+Subject: [PATCH 3/6] Add APPEND WRITE
+
+---
+ c++/include/orc/OrcFile.hh | 10 ++++++
+ c++/src/Writer.cc          | 63 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 73 insertions(+)
+
+diff --git a/c++/include/orc/OrcFile.hh b/c++/include/orc/OrcFile.hh
+index c6485316..1e6e2b6b 100644
+--- a/c++/include/orc/OrcFile.hh
++++ b/c++/include/orc/OrcFile.hh
+@@ -143,6 +143,16 @@ namespace orc {
+                                       const Type& type,
+                                       OutputStream* stream,
+                                       const WriterOptions& options);
++
++
++  ORC_UNIQUE_PTR<Writer> createWriter(
++                                      const Type& type,
++                                      OutputStream* stream,
++                                      const WriterOptions& options,
++                                      const std::string &postScript,
++                                      const std::string &footer,
++                                      const std::string &metadata
++                                      );
+ }
+ 
+ #endif
+diff --git a/c++/src/Writer.cc b/c++/src/Writer.cc
+index 6f7fe82f..4f32cc44 100644
+--- a/c++/src/Writer.cc
++++ b/c++/src/Writer.cc
+@@ -259,6 +259,45 @@ namespace orc {
+                const Type& type,
+                OutputStream* stream,
+                const WriterOptions& options);
++    WriterImpl(
++               const Type& type,
++               OutputStream* stream,
++               const WriterOptions& options,
++               const std::string& postScript,
++               const std::string & footer,
++               const std::string& metadata
++               ): outStream(stream), options(options),type(type) {
++      this->postScript.ParseFromString(postScript);
++      this->fileFooter.ParseFromString(footer);
++      this->metadata.ParseFromString(metadata);
++      this->fileFooter.clear_types();
++
++      streamsFactory = createStreamsFactory(options, outStream);
++      columnWriter = buildWriter(type, *streamsFactory, options);
++      stripeRows = totalRows = indexRows = 0;
++
++      // compression stream for stripe footer, file footer and metadata
++      compressionStream = createCompressor(
++                                    options.getCompression(),
++                                    outStream,
++                                    options.getCompressionStrategy(),
++                                    1 * 1024 * 1024, // buffer capacity: 1M
++                                    options.getCompressionBlockSize(),
++                                    *options.getMemoryPool());
++
++      // uncompressed stream for post script
++      bufferedStream.reset(new BufferedOutputStream(
++                                              *options.getMemoryPool(),
++                                              outStream,
++                                              1024, // buffer capacity: 1024 bytes
++                                              options.getCompressionBlockSize()));
++
++      currentOffset = stream->getLength();
++      totalRows = fileFooter.numberofrows();
++      uint32_t index = 0;
++      buildFooterType(this->type, this->fileFooter, index);
++      initStripe();
++    }
+ 
+     std::unique_ptr<ColumnVectorBatch> createRowBatch(uint64_t size)
+                                                             const override;
+@@ -499,12 +538,18 @@ namespace orc {
+     fileFooter.set_contentlength(currentOffset - fileFooter.headerlength());
+     fileFooter.set_numberofrows(totalRows);
+ 
++    if (fileFooter.statistics_size() > 0) {
++      // XXX(chiyang): Currently ORC APPEND WRITE is unable to produce correct
++      // file statistics. So keep statistics non-existed rather than incorrect.
++      fileFooter.clear_statistics();
++    } else { // Only write file statistics for totally new file.
+     // update file statistics
+     std::vector<proto::ColumnStatistics> colStats;
+     columnWriter->getFileStatistics(colStats);
+     for (uint32_t i = 0; i != colStats.size(); ++i) {
+       *fileFooter.add_statistics() = colStats[i];
+     }
++    }
+ 
+     if (!fileFooter.SerializeToZeroCopyStream(compressionStream.get())) {
+       throw std::logic_error("Failed to write file footer.");
+@@ -639,6 +684,24 @@ namespace orc {
+                                             stream,
+                                             options));
+   }
++  std::unique_ptr<Writer> createWriter(
++                                       const Type& type,
++                                       OutputStream* stream,
++                                       const WriterOptions& options,
++                                       const std::string &postScript,
++                                       const std::string &footer,
++                                       const std::string &metadata
++                                       ) {
++    return std::unique_ptr<Writer>(
++                                   new WriterImpl(
++                                            type,
++                                            stream,
++                                            options,
++                                            (postScript),
++                                            (footer),
++                                            (metadata)
++                                            ));
++  }
+ 
+ }
+ 
+-- 
+2.20.1 (Apple Git-117)
+
+
+From 93acf755dd70d05d4f1e71e7d090d9ffdfe10294 Mon Sep 17 00:00:00 2001
+From: Chiyang Wan <chiyang10000@gmail.com>
+Date: Sun, 16 Aug 2020 17:41:47 +0800
+Subject: [PATCH 4/6] Add lz4 and snappy compression
+
+---
+ c++/src/Compression.cc | 77 +++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 76 insertions(+), 1 deletion(-)
+
+diff --git a/c++/src/Compression.cc b/c++/src/Compression.cc
+index 362a6415..82cbc7e2 100644
+--- a/c++/src/Compression.cc
++++ b/c++/src/Compression.cc
+@@ -1014,6 +1014,75 @@ DIAGNOSTIC_POP
+ 
+     return true;
+   }
++  class Lz4CompressionStream: public BlockCompressionStream {
++  public:
++    Lz4CompressionStream(OutputStream * outStream,
++                          int compressionLevel,
++                          uint64_t capacity,
++                          uint64_t blockSize,
++                          MemoryPool& pool) : BlockCompressionStream(outStream,
++                                              compressionLevel,
++                                              capacity,
++                                              blockSize,
++                                              pool) {}
++
++    virtual std::string getName() const override {
++      return "Lz4CompressionStream";
++    }
++
++  protected:
++    virtual uint64_t doBlockCompression() override {
++      const char *src = reinterpret_cast<const char*>(rawInputBuffer.data());
++      uint64_t srcSize = bufferSize;
++      char *dest = reinterpret_cast<char*>(compressorBuffer.data());
++      uint64_t destSize = compressorBuffer.size();
++      assert(src != nullptr && srcSize > 0 && dest != nullptr && destSize > 0);
++      assert(destSize >= LZ4_compressBound(srcSize));
++      int res = LZ4_compress_default(src, dest, srcSize, destSize);
++      if (res == 0) {
++        throw std::runtime_error("Error while calling LZ4_compress_default() for lz4.");
++      }
++      return res;
++    }
++
++    virtual uint64_t estimateMaxCompressionSize() override {
++      return LZ4_compressBound(static_cast<size_t>(bufferSize));
++    }
++  };
++
++  class SnappyCompressionStream: public BlockCompressionStream {
++  public:
++    SnappyCompressionStream(OutputStream * outStream,
++                          int compressionLevel,
++                          uint64_t capacity,
++                          uint64_t blockSize,
++                          MemoryPool& pool) : BlockCompressionStream(outStream,
++                                              compressionLevel,
++                                              capacity,
++                                              blockSize,
++                                              pool) {}
++
++    virtual std::string getName() const override {
++      return "SnappyCompressionStream";
++    }
++
++  protected:
++    virtual uint64_t doBlockCompression() override {
++      const char *src = reinterpret_cast<const char*>(rawInputBuffer.data());
++      uint64_t srcSize = bufferSize;
++      char *dest = reinterpret_cast<char*>(compressorBuffer.data());
++      uint64_t destSize = compressorBuffer.size();
++      assert(src != nullptr && srcSize > 0 && dest != nullptr && destSize > 0);
++      assert(destSize >= snappy::MaxCompressedLength(srcSize));
++      size_t res;
++      snappy::RawCompress(src, srcSize, dest, &res);
++      return res;
++    }
++
++    virtual uint64_t estimateMaxCompressionSize() override {
++      return snappy::MaxCompressedLength(static_cast<size_t>(bufferSize));
++    }
++  };
+ 
+   /**
+    * ZSTD block compression
+@@ -1119,8 +1188,14 @@ DIAGNOSTIC_POP
+           outStream, level, bufferCapacity, compressionBlockSize, pool));
+     }
+     case CompressionKind_SNAPPY:
+-    case CompressionKind_LZO:
++      return std::unique_ptr<BufferedOutputStream>
++        (new SnappyCompressionStream(
++                outStream, 0, bufferCapacity, compressionBlockSize, pool));
+     case CompressionKind_LZ4:
++      return std::unique_ptr<BufferedOutputStream>
++        (new Lz4CompressionStream(
++                outStream, 0, bufferCapacity, compressionBlockSize, pool));
++    case CompressionKind_LZO:
+     default:
+       throw NotImplementedYet("compression codec");
+     }
+-- 
+2.20.1 (Apple Git-117)
+
+
+From 40c5ac203601464d7b39c9231486aa0fdabdafac Mon Sep 17 00:00:00 2001
+From: Chiyang Wan <chiyang10000@gmail.com>
+Date: Wed, 19 Aug 2020 12:41:19 +0800
+Subject: [PATCH 5/6] Add uncompressed flush out size
+
+---
+ c++/include/orc/OrcFile.hh | 2 ++
+ c++/src/Compression.cc     | 8 ++++++++
+ c++/src/io/OutputStream.cc | 1 +
+ c++/src/io/OutputStream.hh | 5 +++++
+ 4 files changed, 16 insertions(+)
+
+diff --git a/c++/include/orc/OrcFile.hh b/c++/include/orc/OrcFile.hh
+index 1e6e2b6b..8df32530 100644
+--- a/c++/include/orc/OrcFile.hh
++++ b/c++/include/orc/OrcFile.hh
+@@ -100,6 +100,8 @@ namespace orc {
+      * Close the stream and flush any pending data to the disk.
+      */
+     virtual void close() = 0;
++
++    uint64_t uncompressedFlushToStreamSize = 0;
+   };
+ 
+   /**
+diff --git a/c++/src/Compression.cc b/c++/src/Compression.cc
+index 82cbc7e2..2f571420 100644
+--- a/c++/src/Compression.cc
++++ b/c++/src/Compression.cc
+@@ -117,6 +117,10 @@ namespace orc {
+     }
+     BufferedOutputStream::BackUp(outputSize - outputPosition);
+     bufferSize = outputSize = outputPosition = 0;
++
++    // offset the extra increment in following flush
++    updUncompressedFlushToStreamSize(-ByteCount());
++
+     return BufferedOutputStream::flush();
+   }
+ 
+@@ -177,6 +181,8 @@ namespace orc {
+     if (bufferSize != 0) {
+       ensureHeader();
+ 
++      updUncompressedFlushToStreamSize(bufferSize);
++
+       uint64_t totalCompressedSize = doStreamingCompression();
+ 
+       char * header = outputBuffer + outputPosition - totalCompressedSize - 3;
+@@ -965,6 +971,8 @@ DIAGNOSTIC_POP
+     if (bufferSize != 0) {
+       ensureHeader();
+ 
++      updUncompressedFlushToStreamSize(bufferSize);
++
+       // perform compression
+       size_t totalCompressedSize = doBlockCompression();
+ 
+diff --git a/c++/src/io/OutputStream.cc b/c++/src/io/OutputStream.cc
+index fd71c4b8..46c3bfbb 100644
+--- a/c++/src/io/OutputStream.cc
++++ b/c++/src/io/OutputStream.cc
+@@ -94,6 +94,7 @@ namespace orc {
+     uint64_t dataSize = dataBuffer->size();
+     outputStream->write(dataBuffer->data(), dataSize);
+     dataBuffer->resize(0);
++    updUncompressedFlushToStreamSize(dataSize);
+     return dataSize;
+   }
+ 
+diff --git a/c++/src/io/OutputStream.hh b/c++/src/io/OutputStream.hh
+index 6d046293..80834870 100644
+--- a/c++/src/io/OutputStream.hh
++++ b/c++/src/io/OutputStream.hh
+@@ -46,6 +46,11 @@ namespace orc {
+     std::unique_ptr<DataBuffer<char> > dataBuffer;
+     uint64_t blockSize;
+ 
++  protected:
++    void updUncompressedFlushToStreamSize(int64_t size) {
++      outputStream->uncompressedFlushToStreamSize += size;
++    }
++
+   public:
+     BufferedOutputStream(MemoryPool& pool,
+                       OutputStream * outStream,
+-- 
+2.20.1 (Apple Git-117)
+
+
+From efdca5c94cc46f14aac95cdc88bdf35d97291514 Mon Sep 17 00:00:00 2001
+From: Chiyang Wan <chiyang10000@gmail.com>
+Date: Tue, 25 Aug 2020 10:32:30 +0800
+Subject: [PATCH 6/6] Optimize comparing Decimal with identical scale
+
+---
+ c++/include/orc/Common.hh | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/c++/include/orc/Common.hh b/c++/include/orc/Common.hh
+index ca926cf2..3226ac1e 100644
+--- a/c++/include/orc/Common.hh
++++ b/c++/include/orc/Common.hh
+@@ -218,6 +218,9 @@ namespace orc {
+   // Specialization for Decimal
+   template <>
+   inline bool compare(Decimal val1, Decimal val2) {
++    if (val1.scale == val2.scale)
++    return (val1.value < val2.value);
++
+     // compare integral parts
+     Int128 integral1 = scaleDownInt128ByPowerOfTen(val1.value,
+                                                    val1.scale);
+-- 
+2.20.1 (Apple Git-117)
+

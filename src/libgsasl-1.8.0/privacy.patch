@@ -1,0 +1,678 @@
+Only in /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/: .DS_Store
+Only in /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/: .cproject
+Only in /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/: .project
+diff -ur libgsasl-1.8.0/digest-md5/client.c /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/digest-md5/client.c
+--- libgsasl-1.8.0/digest-md5/client.c	2012-05-16 06:35:28.000000000 +0800
++++ /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/digest-md5/client.c	2018-12-12 22:59:15.000000000 +0800
+@@ -43,6 +43,7 @@
+ #include "digesthmac.h"
+ #include "qop.h"
+ 
++
+ #define CNONCE_ENTROPY_BYTES 16
+ 
+ struct _Gsasl_digest_md5_client_state
+@@ -57,6 +58,8 @@
+   digest_md5_challenge challenge;
+   digest_md5_response response;
+   digest_md5_finish finish;
++
++  _Gsasl_digest_md5_encrypt_state encrypt_state;
+ };
+ typedef struct _Gsasl_digest_md5_client_state _Gsasl_digest_md5_client_state;
+ 
+@@ -85,7 +88,8 @@
+ 
+   state->response.cnonce = p;
+   state->response.nc = 1;
+-
++  state->response.qop = DIGEST_MD5_QOP_AUTH | DIGEST_MD5_QOP_AUTH_INT | DIGEST_MD5_QOP_AUTH_CONF;
++  state->encrypt_state.cipher = 0;
+   *mech_data = state;
+ 
+   return GSASL_OK;
+@@ -132,6 +136,7 @@
+ 
+ 	/* FIXME: cipher, maxbuf. */
+ 
++    state->response.cipher = choose_cipher(state->challenge.ciphers);
+ 	/* Create response token. */
+ 	state->response.utf8 = 1;
+ 
+@@ -140,17 +145,24 @@
+ 
+ 	{
+ 	  const char *qop = gsasl_property_get (sctx, GSASL_QOP);
++	  char dummy[2];
+ 
+ 	  if (!qop)
+-	    state->response.qop = GSASL_QOP_AUTH;
++	    state->response.qop = state->challenge.qops;
+ 	  else if (strcmp (qop, "qop-int") == 0)
+ 	    state->response.qop = GSASL_QOP_AUTH_INT;
+ 	  else if (strcmp (qop, "qop-auth") == 0)
+ 	    state->response.qop = GSASL_QOP_AUTH;
++	  else if (strcmp (qop, "qop-conf") == 0)
++	    state->response.qop = GSASL_QOP_AUTH_CONF;
+ 	  else
+ 	    /* We don't support confidentiality or unknown
+ 	       keywords. */
+ 	    return GSASL_AUTHENTICATION_ERROR;
++
++        dummy[0] = state->response.qop;
++        dummy[1] = 0;
++	    gsasl_property_set_raw (sctx, GSASL_QOP, dummy, 1);
+ 	}
+ 
+ 	state->response.nonce = strdup (state->challenge.nonce);
+@@ -218,7 +230,6 @@
+ 	  memcpy (state->secret, tmp2, DIGEST_MD5_LENGTH);
+ 	  free (tmp2);
+ 	}
+-
+ 	rc = digest_md5_hmac (state->response.response,
+ 			      state->secret,
+ 			      state->response.nonce,
+@@ -261,8 +272,19 @@
+ 	if (res != GSASL_OK)
+ 	  break;
+ 
+-	if (strcmp (state->finish.rspauth, check) == 0)
+-	  res = GSASL_OK;
++	if (strcmp (state->finish.rspauth, check) == 0) {
++	    res = GSASL_OK;
++	    if (state->response.qop == GSASL_QOP_AUTH_CONF) {
++          memcpy(state->encrypt_state.kcc, state->kcc, DIGEST_MD5_LENGTH);
++          memcpy(state->encrypt_state.kcs, state->kcs, DIGEST_MD5_LENGTH);
++          memcpy(state->encrypt_state.kic, state->kic, DIGEST_MD5_LENGTH);
++          memcpy(state->encrypt_state.kis, state->kis, DIGEST_MD5_LENGTH);
++          state->encrypt_state.cipher = state->response.cipher;
++          state->encrypt_state.client = 1;
++          if (digest_md5_crypt_init(&state->encrypt_state) < 0)
++            res = GSASL_INTEGRITY_ERROR;
++        }
++	 }
+ 	else
+ 	  res = GSASL_AUTHENTICATION_ERROR;
+ 	state->step++;
+@@ -289,6 +311,8 @@
+   digest_md5_free_response (&state->response);
+   digest_md5_free_finish (&state->finish);
+ 
++  if (state->encrypt_state.cipher)
++    digest_md5_crypt_cleanup(&state->encrypt_state);
+   free (state);
+ }
+ 
+@@ -301,8 +325,8 @@
+ {
+   _Gsasl_digest_md5_client_state *state = mech_data;
+   int res;
+-
+-  res = digest_md5_encode (input, input_len, output, output_len,
++  res = digest_md5_encode (&state->encrypt_state,
++               input, input_len, output, output_len,
+ 			   state->response.qop,
+ 			   state->sendseqnum, state->kic);
+   if (res)
+@@ -326,7 +350,8 @@
+   _Gsasl_digest_md5_client_state *state = mech_data;
+   int res;
+ 
+-  res = digest_md5_decode (input, input_len, output, output_len,
++  res = digest_md5_decode (&state->encrypt_state,
++               input, input_len, output, output_len,
+ 			   state->response.qop,
+ 			   state->readseqnum, state->kis);
+   if (res)
+diff -ur libgsasl-1.8.0/digest-md5/parser.c /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/digest-md5/parser.c
+--- libgsasl-1.8.0/digest-md5/parser.c	2012-05-16 06:35:28.000000000 +0800
++++ /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/digest-md5/parser.c	2018-12-12 20:50:18.000000000 +0800
+@@ -108,6 +108,29 @@
+   NULL
+ };
+ 
++int choose_cipher(int cipher) {
++    /*
++    Not supported
++
++    if (cipher & DIGEST_MD5_CIPHER_AES_CBC)
++        return DIGEST_MD5_CIPHER_AES_CBC;
++    */
++    if (cipher & DIGEST_MD5_CIPHER_RC4)
++        return DIGEST_MD5_CIPHER_RC4;
++    if (cipher & DIGEST_MD5_CIPHER_3DES)
++        return DIGEST_MD5_CIPHER_3DES;
++    if (cipher & DIGEST_MD5_CIPHER_RC4_56)
++        return DIGEST_MD5_CIPHER_RC4_56;
++    if (cipher & DIGEST_MD5_CIPHER_RC4_40)
++        return DIGEST_MD5_CIPHER_RC4_40;
++    if (cipher & DIGEST_MD5_CIPHER_DES)
++        return DIGEST_MD5_CIPHER_DES;
++    else
++        return 0;
++
++
++}
++
+ static int
+ parse_challenge (char *challenge, digest_md5_challenge * out)
+ {
+diff -ur libgsasl-1.8.0/digest-md5/server.c /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/digest-md5/server.c
+--- libgsasl-1.8.0/digest-md5/server.c	2012-05-16 06:35:28.000000000 +0800
++++ /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/digest-md5/server.c	2018-12-13 09:38:06.000000000 +0800
+@@ -58,6 +58,8 @@
+   digest_md5_challenge challenge;
+   digest_md5_response response;
+   digest_md5_finish finish;
++
++  _Gsasl_digest_md5_encrypt_state encrypt_state;
+ };
+ typedef struct _Gsasl_digest_md5_server_state _Gsasl_digest_md5_server_state;
+ 
+@@ -357,7 +359,8 @@
+   _Gsasl_digest_md5_server_state *state = mech_data;
+   int res;
+ 
+-  res = digest_md5_encode (input, input_len, output, output_len,
++  res = digest_md5_encode (&state->encrypt_state,
++               input, input_len, output, output_len,
+ 			   state->response.qop, state->sendseqnum,
+ 			   state->kis);
+   if (res)
+@@ -381,7 +384,8 @@
+   _Gsasl_digest_md5_server_state *state = mech_data;
+   int res;
+ 
+-  res = digest_md5_decode (input, input_len, output, output_len,
++  res = digest_md5_decode (&state->encrypt_state,
++               input, input_len, output, output_len,
+ 			   state->response.qop, state->readseqnum,
+ 			   state->kic);
+   if (res)
+diff -ur libgsasl-1.8.0/digest-md5/session.c /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/digest-md5/session.c
+--- libgsasl-1.8.0/digest-md5/session.c	2012-05-16 06:35:28.000000000 +0800
++++ /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/digest-md5/session.c	2018-12-13 13:17:27.000000000 +0800
+@@ -44,8 +44,142 @@
+ #define MAC_MSG_TYPE_LEN 2
+ #define MAC_SEQNUM_LEN 4
+ 
++static void slidebits(unsigned char *keybuf, unsigned char *inbuf)
++{
++    keybuf[0] = inbuf[0];
++    keybuf[1] = (inbuf[0]<<7) | (inbuf[1]>>1);
++    keybuf[2] = (inbuf[1]<<6) | (inbuf[2]>>2);
++    keybuf[3] = (inbuf[2]<<5) | (inbuf[3]>>3);
++    keybuf[4] = (inbuf[3]<<4) | (inbuf[4]>>4);
++    keybuf[5] = (inbuf[4]<<3) | (inbuf[5]>>5);
++    keybuf[6] = (inbuf[5]<<2) | (inbuf[6]>>6);
++    keybuf[7] = (inbuf[6]<<1);
++}
++
++int digest_md5_crypt_init(_Gsasl_digest_md5_encrypt_state *state)
++{
++
++    if (state->cipher != 0) {
++         char *my_key=NULL;
++         char *peer_key=NULL;
++         if (state->client) {
++            my_key = state->kcc;
++            peer_key = state->kcs;
++         } else {
++            my_key = state->kcs;
++            peer_key = state->kcc;
++         }
++         if (state->cipher == DIGEST_MD5_CIPHER_RC4_56) {
++            RC4_set_key(&state->rc4_key_encrypt, DIGEST_MD5_LENGTH, my_key);
++            RC4_set_key(&state->rc4_key_decrypt, DIGEST_MD5_LENGTH, peer_key);
++         } else if (state->cipher == DIGEST_MD5_CIPHER_RC4_40) {
++            RC4_set_key(&state->rc4_key_encrypt, DIGEST_MD5_LENGTH, my_key);
++            RC4_set_key(&state->rc4_key_decrypt, DIGEST_MD5_LENGTH, peer_key);
++         } else if (state->cipher == DIGEST_MD5_CIPHER_RC4) {
++            RC4_set_key(&state->rc4_key_encrypt, DIGEST_MD5_LENGTH, my_key);
++            RC4_set_key(&state->rc4_key_decrypt, DIGEST_MD5_LENGTH, peer_key);
++         } else if (state->cipher == DIGEST_MD5_CIPHER_3DES) {
++            unsigned char keybuf[8];
++            slidebits(keybuf, my_key);
++
++            DES_key_sched((DES_cblock *) keybuf, &(state->keysched_encrypt));
++
++            slidebits(keybuf, my_key + 7);
++
++            DES_key_sched((DES_cblock *) keybuf, &(state->keysched2_encrypt));
++            memcpy(state->ivec_encrypt, ((char *) my_key) + 8, 8);
++
++            slidebits(keybuf, peer_key);
++            DES_key_sched((DES_cblock *) keybuf, &(state->keysched_decrypt));
++
++            slidebits(keybuf, peer_key + 7);
++
++            DES_key_sched((DES_cblock *) keybuf, &(state->keysched2_decrypt));
++
++
++            memcpy(state->ivec_decrypt, ((char *) peer_key) + 8, 8);
++
++
++         } else if (state->cipher == DIGEST_MD5_CIPHER_DES) {
++
++            unsigned char keybuf[8];
++            slidebits(keybuf, my_key);
++
++            DES_key_sched((DES_cblock *) keybuf, &(state->keysched_encrypt));
++
++            memcpy(state->ivec_encrypt, ((char *) my_key) + 8, 8);
++
++            slidebits(keybuf, peer_key);
++            DES_key_sched((DES_cblock *) keybuf, &(state->keysched_decrypt));
++
++            memcpy(state->ivec_decrypt, ((char *) peer_key) + 8, 8);
++         }
++
++    } else {
++        return 0;
++    }
++}
++
++int digest_md5_crypt_cleanup(_Gsasl_digest_md5_encrypt_state *state) {
++    return 0;
++}
++
++void do_encrypt(_Gsasl_digest_md5_encrypt_state *state, const char* to_encrypt, int encrypt_length, char *encrypted) {
++    if (state->cipher == DIGEST_MD5_CIPHER_RC4_56) {
++        RC4(&state->rc4_key_encrypt, encrypt_length, to_encrypt, encrypted);
++     } else if (state->cipher == DIGEST_MD5_CIPHER_RC4_40) {
++        RC4(&state->rc4_key_encrypt, encrypt_length, to_encrypt, encrypted);
++     } else if (state->cipher == DIGEST_MD5_CIPHER_RC4) {
++        RC4(&state->rc4_key_encrypt, encrypt_length, to_encrypt, encrypted);
++     } else if (state->cipher == DIGEST_MD5_CIPHER_3DES) {
++            DES_ede3_cbc_encrypt((void *) to_encrypt,
++			 (void *) encrypted,
++			 encrypt_length,
++			 &(state->keysched_encrypt),
++			 &(state->keysched2_encrypt),
++			 &(state->keysched_encrypt),
++			 &state->ivec_encrypt,
++			 DES_ENCRYPT);
++     } else if (state->cipher == DIGEST_MD5_CIPHER_DES) {
++            DES_ncbc_encrypt((void *) to_encrypt,
++                    (void *) encrypted,
++                    encrypt_length,
++                    &(state->keysched_encrypt),
++                    &state->ivec_encrypt,
++                    DES_ENCRYPT);
++     }
++}
++
++void do_decrypt(_Gsasl_digest_md5_encrypt_state *state, const char* to_decrypt, int decrypt_length, char *decrypted) {
++    if (state->cipher == DIGEST_MD5_CIPHER_RC4_56) {
++        RC4(&state->rc4_key_decrypt, decrypt_length, to_decrypt, decrypted);
++     } else if (state->cipher == DIGEST_MD5_CIPHER_RC4_40) {
++        RC4(&state->rc4_key_decrypt, decrypt_length, to_decrypt, decrypted);
++     } else if (state->cipher == DIGEST_MD5_CIPHER_RC4) {
++        RC4(&state->rc4_key_decrypt, decrypt_length, to_decrypt, decrypted);
++     } else if (state->cipher == DIGEST_MD5_CIPHER_3DES) {
++        DES_ede3_cbc_encrypt((void *) to_decrypt,
++			 (void *) decrypted,
++			 decrypt_length,
++			 &(state->keysched_decrypt),
++			 &(state->keysched2_decrypt),
++			 &(state->keysched_decrypt),
++			 &state->ivec_decrypt,
++			 DES_DECRYPT);
++     } else if (state->cipher == DIGEST_MD5_CIPHER_DES) {
++        DES_ncbc_encrypt((void *) to_decrypt,
++                    (void *) decrypted,
++                    decrypt_length,
++                    &(state->keysched_decrypt),
++                    &state->ivec_decrypt,
++                    DES_DECRYPT);
++     }
++}
++
++
+ int
+-digest_md5_encode (const char *input, size_t input_len,
++digest_md5_encode (_Gsasl_digest_md5_encrypt_state *state,
++           const char *input, size_t input_len,
+ 		   char **output, size_t * output_len,
+ 		   digest_md5_qop qop,
+ 		   unsigned long sendseqnum, char key[DIGEST_MD5_LENGTH])
+@@ -54,7 +188,82 @@
+ 
+   if (qop & DIGEST_MD5_QOP_AUTH_CONF)
+     {
+-      return -1;
++      char *seqnumin;
++      char hash[GC_MD5_DIGEST_SIZE];
++      char pad[19]; // block size for rc4 is 1, and 8 for DES/3DES
++      int padding = 0;
++      int encrypt_length;
++      size_t len;
++      char *to_encrypt;
++      char *encrypted;
++      char *my_key=NULL;
++      if (!state->cipher)
++          return -1;
++
++      seqnumin = malloc (MAC_SEQNUM_LEN + input_len);
++      if (seqnumin == NULL)
++	    return -1;
++
++      seqnumin[0] = (sendseqnum >> 24) & 0xFF;
++      seqnumin[1] = (sendseqnum >> 16) & 0xFF;
++      seqnumin[2] = (sendseqnum >> 8) & 0xFF;
++      seqnumin[3] = sendseqnum & 0xFF;
++      memcpy (seqnumin + MAC_SEQNUM_LEN, input, input_len);
++
++      if (state->client)
++         my_key = state->kic;
++      else
++        my_key = state->kis;
++      res = gc_hmac_md5 (my_key, MD5LEN,
++			 seqnumin, MAC_SEQNUM_LEN + input_len, hash);
++      free (seqnumin);
++      if (res)
++	    return -1;
++
++      if (state->cipher == DIGEST_MD5_CIPHER_3DES || state->cipher == DIGEST_MD5_CIPHER_DES) {
++        int i;
++        padding = 8 - ((input_len+MAC_HMAC_LEN) % 8);
++        for (i=0; i < padding; i++)
++            pad[i] = padding;
++      }
++      to_encrypt = malloc(input_len+padding+MAC_HMAC_LEN);
++      if (to_encrypt == NULL)
++    	return -1;
++      encrypted = malloc(input_len+padding+MAC_HMAC_LEN);
++      if (encrypted == NULL) {
++        free(to_encrypt);
++    	return -1;
++      }
++      memcpy(to_encrypt, input, input_len);
++      memcpy(to_encrypt+input_len, pad, padding);
++      memcpy(to_encrypt+input_len+padding, hash, MAC_HMAC_LEN);
++      encrypt_length = input_len+padding + MAC_HMAC_LEN;
++      do_encrypt(state, to_encrypt, encrypt_length, encrypted);
++      // Do encrypt
++      free(to_encrypt);
++
++	  *output_len = MAC_DATA_LEN + encrypt_length  +
++	    MAC_MSG_TYPE_LEN + MAC_SEQNUM_LEN;
++	  *output = malloc (*output_len);
++      if (!*output) {
++        free(encrypted);
++	    return -1;
++      }
++      len = MAC_DATA_LEN;
++      memcpy (*output + len, encrypted, encrypt_length);
++      free(encrypted);
++      len += encrypt_length;
++      memcpy (*output + len, MAC_MSG_TYPE, MAC_MSG_TYPE_LEN);
++      len += MAC_MSG_TYPE_LEN;
++      (*output + len)[0] = (sendseqnum >> 24) & 0xFF;
++      (*output + len)[1] = (sendseqnum >> 16) & 0xFF;
++      (*output + len)[2] = (sendseqnum >> 8) & 0xFF;
++      (*output + len)[3] = sendseqnum & 0xFF;
++      len += MAC_SEQNUM_LEN;
++      (*output)[0] = ((len - MAC_DATA_LEN) >> 24) & 0xFF;
++      (*output)[1] = ((len - MAC_DATA_LEN) >> 16) & 0xFF;
++      (*output)[2] = ((len - MAC_DATA_LEN) >> 8) & 0xFF;
++      (*output)[3] = (len - MAC_DATA_LEN) & 0xFF;
+     }
+   else if (qop & DIGEST_MD5_QOP_AUTH_INT)
+     {
+@@ -119,14 +328,102 @@
+ 		  ((buf[0] & 0xFF) << 24))
+ 
+ int
+-digest_md5_decode (const char *input, size_t input_len,
++digest_md5_decode (_Gsasl_digest_md5_encrypt_state *state,
++           const char *input, size_t input_len,
+ 		   char **output, size_t * output_len,
+ 		   digest_md5_qop qop,
+ 		   unsigned long readseqnum, char key[DIGEST_MD5_LENGTH])
+ {
+   if (qop & DIGEST_MD5_QOP_AUTH_CONF)
+     {
+-      return -1;
++      char *seqnumin;
++      char hash[GC_MD5_DIGEST_SIZE];
++      unsigned long len;
++      char tmpbuf[SASL_INTEGRITY_PREFIX_LENGTH];
++      char msgType[MAC_MSG_TYPE_LEN];
++      char seqNum[MAC_SEQNUM_LEN];
++      char originalHash[GC_MD5_DIGEST_SIZE];
++      char *encrypted;
++      char *decrypted;
++      int encrypted_length;
++      int res;
++      char *my_key=NULL;
++      if (!state->cipher)
++          return -1;
++
++      if (input_len < SASL_INTEGRITY_PREFIX_LENGTH)
++    	return -2;
++
++      len = C2I (input);
++
++      if (input_len < SASL_INTEGRITY_PREFIX_LENGTH + len)
++	    return -2;
++
++      if (state->client)
++         my_key = state->kis;
++      else
++         my_key = state->kic;
++      memcpy(msgType, input+input_len-MAC_SEQNUM_LEN-MAC_MSG_TYPE_LEN, MAC_MSG_TYPE_LEN);
++      memcpy(seqNum, input+input_len-MAC_SEQNUM_LEN, MAC_SEQNUM_LEN);
++
++      encrypted_length = input_len - MAC_MSG_TYPE_LEN - MAC_SEQNUM_LEN - MAC_DATA_LEN;
++      encrypted = malloc(encrypted_length);
++      if (encrypted == NULL)
++        return -1;
++      decrypted = malloc(encrypted_length);
++      if (decrypted == NULL) {
++        free(encrypted);
++        return -1;
++      }
++      memcpy(encrypted, input+MAC_DATA_LEN, encrypted_length);
++
++      do_decrypt(state, encrypted, encrypted_length, decrypted);
++      free(encrypted);
++      memcpy(originalHash, decrypted+encrypted_length-MAC_HMAC_LEN, MAC_HMAC_LEN);
++      encrypted_length -= MAC_HMAC_LEN;
++      if (state->cipher == DIGEST_MD5_CIPHER_3DES || state->cipher == DIGEST_MD5_CIPHER_DES) {
++        encrypted_length -= decrypted[encrypted_length-1];
++      }
++
++      seqnumin = malloc (MAC_SEQNUM_LEN + encrypted_length);
++      if (seqnumin == NULL) {
++        free(decrypted);
++	    return -1;
++      }
++      tmpbuf[0] = (readseqnum >> 24) & 0xFF;
++      tmpbuf[1] = (readseqnum >> 16) & 0xFF;
++      tmpbuf[2] = (readseqnum >> 8) & 0xFF;
++      tmpbuf[3] = readseqnum & 0xFF;
++
++      memcpy (seqnumin, tmpbuf, MAC_SEQNUM_LEN);
++      memcpy (seqnumin + MAC_SEQNUM_LEN,
++	      decrypted, encrypted_length);
++
++      res = gc_hmac_md5 (my_key, MD5LEN, seqnumin, MAC_SEQNUM_LEN + encrypted_length, hash);
++      free (seqnumin);
++      if (res) {
++        free(decrypted);
++	    return -1;
++      }
++      if (memcmp(hash, originalHash, MAC_HMAC_LEN) == 0
++	  && memcmp (MAC_MSG_TYPE,
++		     msgType,
++		     MAC_MSG_TYPE_LEN) == 0
++	  && memcmp (tmpbuf, seqNum,
++		     MAC_SEQNUM_LEN) == 0)
++	{
++	  *output_len = encrypted_length;
++	  *output = malloc (*output_len);
++	  if (!*output) {
++	    free(decrypted);
++	    return -1;
++	  }
++	  memcpy (*output, decrypted, encrypted_length);
++	}
++    else {
++        free(decrypted);
++	    return -1;
++	 }
+     }
+   else if (qop & DIGEST_MD5_QOP_AUTH_INT)
+     {
+diff -ur libgsasl-1.8.0/digest-md5/session.h /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/digest-md5/session.h
+--- libgsasl-1.8.0/digest-md5/session.h	2012-05-16 06:35:28.000000000 +0800
++++ /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/digest-md5/session.h	2018-12-13 13:16:11.000000000 +0800
+@@ -26,13 +26,45 @@
+ /* Get token types. */
+ #include "tokens.h"
+ 
+-extern int digest_md5_encode (const char *input, size_t input_len,
++#include <openssl/des.h>
++#include <openssl/opensslv.h>
++#include <openssl/rc4.h>
++
++struct _Gsasl_digest_md5_encrypt_state
++{
++  char kic[DIGEST_MD5_LENGTH];
++  char kis[DIGEST_MD5_LENGTH];
++  char kcc[DIGEST_MD5_LENGTH];
++  char kcs[DIGEST_MD5_LENGTH];
++  int cipher;
++  int client;
++
++  RC4_KEY rc4_key_encrypt;
++  RC4_KEY rc4_key_decrypt;
++
++  DES_key_schedule keysched_encrypt;  /* key schedule for des initialization */
++  DES_cblock ivec_encrypt;            /* initial vector for encoding */
++  DES_key_schedule keysched2_encrypt; /* key schedule for 3des initialization */
++
++  DES_key_schedule keysched_decrypt;  /* key schedule for des initialization */
++  DES_cblock ivec_decrypt;            /* initial vector for encoding */
++  DES_key_schedule keysched2_decrypt; /* key schedule for 3des initialization */
++};
++
++typedef struct _Gsasl_digest_md5_encrypt_state _Gsasl_digest_md5_encrypt_state;
++
++extern int digest_md5_crypt_init(_Gsasl_digest_md5_encrypt_state *state);
++extern int digest_md5_crypt_cleanup(_Gsasl_digest_md5_encrypt_state *state);
++
++extern int digest_md5_encode (_Gsasl_digest_md5_encrypt_state *state,
++                  const char *input, size_t input_len,
+ 			      char **output, size_t * output_len,
+ 			      digest_md5_qop qop,
+ 			      unsigned long sendseqnum,
+ 			      char key[DIGEST_MD5_LENGTH]);
+ 
+-extern int digest_md5_decode (const char *input, size_t input_len,
++extern int digest_md5_decode (_Gsasl_digest_md5_encrypt_state *state,
++                  const char *input, size_t input_len,
+ 			      char **output, size_t * output_len,
+ 			      digest_md5_qop qop,
+ 			      unsigned long readseqnum,
+diff -ur libgsasl-1.8.0/gl/vasnprintf.c /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/gl/vasnprintf.c
+--- libgsasl-1.8.0/gl/vasnprintf.c	2012-04-27 18:24:56.000000000 +0800
++++ /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/gl/vasnprintf.c	2018-12-10 10:49:09.000000000 +0800
+@@ -4870,7 +4870,7 @@
+ #endif
+                   *fbp = dp->conversion;
+ #if USE_SNPRINTF
+-# if !(((__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 3)) && !defined __UCLIBC__) || ((defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__))
++# if !(((__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 3)) && !defined __UCLIBC__) || (defined __APPLE__ && defined __MACH__) || ((defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__))
+                 fbp[1] = '%';
+                 fbp[2] = 'n';
+                 fbp[3] = '\0';
+diff -ur libgsasl-1.8.0/gssapi/client.c /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/gssapi/client.c
+--- libgsasl-1.8.0/gssapi/client.c	2012-05-16 06:35:28.000000000 +0800
++++ /Users/kousouda/dev/hornet/thirdparty/src/libgsasl-1.8.0/gssapi/client.c	2018-12-12 22:23:01.000000000 +0800
+@@ -64,7 +64,7 @@
+   state->context = GSS_C_NO_CONTEXT;
+   state->service = GSS_C_NO_NAME;
+   state->step = 0;
+-  state->qop = GSASL_QOP_AUTH;	/* FIXME: Should be GSASL_QOP_AUTH_CONF. */
++  state->qop = GSASL_QOP_AUTH | GSASL_QOP_AUTH_CONF | GSASL_QOP_AUTH_INT; /* FIXME: Should be GSASL_QOP_AUTH_CONF. */
+ 
+   *mech_data = state;
+ 
+@@ -89,7 +89,7 @@
+ 
+   if (state->service == NULL)
+     {
+-      const char *service, *hostname;
++      const char *service, *hostname, *principal;
+ 
+       service = gsasl_property_get (sctx, GSASL_SERVICE);
+       if (!service)
+@@ -99,21 +99,35 @@
+       if (!hostname)
+ 	return GSASL_NO_HOSTNAME;
+ 
++	principal = gsasl_property_get (sctx, GSASL_GSSAPI_DISPLAY_NAME);
+       /* FIXME: Use asprintf. */
+ 
+-      bufdesc.length = strlen (service) + 1 + strlen (hostname) + 1;
+-      bufdesc.value = malloc (bufdesc.length);
+-      if (bufdesc.value == NULL)
+-	return GSASL_MALLOC_ERROR;
+-
+-      sprintf (bufdesc.value, "%s@%s", service, hostname);
++      if (!principal) {
++           bufdesc.length = strlen (service) + 1 + strlen (hostname) + 1;
++          bufdesc.value = malloc (bufdesc.length);
++          if (bufdesc.value == NULL)
++                return GSASL_MALLOC_ERROR;
++           sprintf (bufdesc.value, "%s@%s", service, hostname);
++           maj_stat = gss_import_name (&min_stat, &bufdesc,
++                      GSS_C_NT_HOSTBASED_SERVICE,
++                      &state->service);
++          free (bufdesc.value);
++          if (GSS_ERROR (maj_stat))
++               return GSASL_GSSAPI_IMPORT_NAME_ERROR;
++     } else {
++          bufdesc.length = strlen (principal) + 1;
++          bufdesc.value = malloc (bufdesc.length);
++          if (bufdesc.value == NULL)
++                return GSASL_MALLOC_ERROR;
++           sprintf (bufdesc.value, "%s", principal);
++           maj_stat = gss_import_name (&min_stat, &bufdesc,
++                      GSS_C_NT_USER_NAME,
++                      &state->service);
++          free (bufdesc.value);
++          if (GSS_ERROR (maj_stat))
++               return GSASL_GSSAPI_IMPORT_NAME_ERROR;
++     }
+ 
+-      maj_stat = gss_import_name (&min_stat, &bufdesc,
+-				  GSS_C_NT_HOSTBASED_SERVICE,
+-				  &state->service);
+-      free (bufdesc.value);
+-      if (GSS_ERROR (maj_stat))
+-	return GSASL_GSSAPI_IMPORT_NAME_ERROR;
+     }
+ 
+   switch (state->step)
+@@ -295,7 +309,7 @@
+       if (GSS_ERROR (maj_stat))
+ 	return GSASL_GSSAPI_WRAP_ERROR;
+       *output_len = output_message_buffer.length;
+-      *output = malloc (input_len);
++      *output = malloc (*output_len);
+       if (!*output)
+ 	{
+ 	  maj_stat = gss_release_buffer (&min_stat, &output_message_buffer);
+@@ -367,7 +381,7 @@
+   else
+     {
+       *output_len = input_len;
+-      *output = malloc (input_len);
++      *output = malloc (*output_len);
+       if (!*output)
+ 	return GSASL_MALLOC_ERROR;
+       memcpy (*output, input, input_len);

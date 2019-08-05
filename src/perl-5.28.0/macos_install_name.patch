@@ -1,0 +1,21 @@
+--- ./Makefile.SH	2019-10-03 22:51:59.000000000 +0800
++++ /Users/chiyang/dev/perl-5.28.0/Makefile.SH	2019-10-03 22:47:31.000000000 +0800
+@@ -67,8 +67,16 @@
+                             -compatibility_version \
+ 				${api_revision}.${api_version}.${api_subversion} \
+ 			     -current_version \
+-				${revision}.${patchlevel}.${subversion} \
+-			     -install_name \$(shrpdir)/\$@"
++				${revision}.${patchlevel}.${subversion}"
++    case "$osvers" in
++          1[5-9]*|[2-9]*)
++      shrpldflags="$shrpldflags -install_name `pwd`/\$@ -Xlinker -headerpad_max_install_names"
++      exeldflags="-Xlinker -headerpad_max_install_names"
++      ;;
++    *)
++      shrpldflags="$shrpldflags -install_name \$(shrpdir)/\$@"
++      ;;
++    esac
+ 		;;
+ 	cygwin*)
+ 		shrpldflags="$shrpldflags -Wl,--out-implib=libperl.dll.a -Wl,--image-base,0x52000000"

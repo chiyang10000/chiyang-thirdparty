@@ -1,0 +1,128 @@
+diff -u -r ./src/rapidjson/rapidjson.h /home/kylin/dev/sofa-pbrpc/src/rapidjson/rapidjson.h
+--- ./src/rapidjson/rapidjson.h	2017-01-20 11:25:28.000000000 +0800
++++ /home/kylin/dev/sofa-pbrpc/src/rapidjson/rapidjson.h	2019-09-30 11:31:11.734634230 +0800
+@@ -47,7 +47,9 @@
+ // RAPIDJSON_SSE2/RAPIDJSON_SSE42/RAPIDJSON_SIMD
+ 
+ // Enable SSE2 optimization.
++#ifdef __SSE2__
+ #define RAPIDJSON_SSE2
++#endif
+ 
+ // Enable SSE4.2 optimization.
+ //#define RAPIDJSON_SSE42
+diff -u -r ./src/sofa/pbrpc/atomic.h /home/kylin/dev/sofa-pbrpc/src/sofa/pbrpc/atomic.h
+--- ./src/sofa/pbrpc/atomic.h	2017-01-20 11:25:28.000000000 +0800
++++ /home/kylin/dev/sofa-pbrpc/src/sofa/pbrpc/atomic.h	2019-10-04 23:24:42.405818605 +0800
+@@ -5,9 +5,17 @@
+ #ifndef _SOFA_PBRPC_ATOMIC_H_
+ #define _SOFA_PBRPC_ATOMIC_H_
+ 
+-#if !defined(__i386__) && !defined(__x86_64__)
++#if defined(__clang__) || defined(__GNUC__)
++#define atomic_inc_ret_old(ptr) __sync_fetch_and_add(ptr, 1)
++#define atomic_dec_ret_old(ptr) __sync_fetch_and_sub(ptr, 1)
++#define atomic_inc_ret_old64(ptr) __sync_fetch_and_add(ptr, 1)
++#define atomic_dec_ret_old64(ptr) __sync_fetch_and_sub(ptr, 1)
++#define atomic_inc(ptr) __sync_fetch_and_add(ptr, 1)
++#define atomic_comp_swap(ptr, val, cmp) __sync_val_compare_and_swap(ptr, cmp, val)
++#define atomic_swap(ptr, val) __atomic_exchange_n(ptr, val, __ATOMIC_ACQ_REL)
++#elif !defined(__i386__) && !defined(__x86_64__)
+ #error    "Arch not supprot!"
+-#endif
++#else
+ 
+ #include <stdint.h>
+ 
+@@ -95,6 +103,7 @@
+ 
+ } // namespace pbrpc
+ } // namespace sofa
++#endif
+ 
+ #endif // _SOFA_PBRPC_ATOMIC_H_
+ 
+diff -u -r ./src/sofa/pbrpc/common.h /home/kylin/dev/sofa-pbrpc/src/sofa/pbrpc/common.h
+--- ./src/sofa/pbrpc/common.h	2017-01-20 11:25:28.000000000 +0800
++++ /home/kylin/dev/sofa-pbrpc/src/sofa/pbrpc/common.h	2019-09-30 11:31:11.794634588 +0800
+@@ -4,16 +4,36 @@
+ 
+ #ifndef _SOFA_PBRPC_COMMON_H_
+ #define _SOFA_PBRPC_COMMON_H_
++#define _SOFA_PBRPC_SMART_PTR_SHARED_PTR_
++#define _SOFA_PBRPC_SMART_PTR_ENABLE_SHARED_FROM_THIS_
+ 
+ #include <stdarg.h>
+ #include <google/protobuf/stubs/common.h>
+ 
+-#include <sofa/pbrpc/smart_ptr/smart_ptr.hpp>
++#include <memory>
+ 
+ namespace std {}
+ 
+ namespace sofa {
+ namespace pbrpc {
++using std::enable_shared_from_this;
++using std::shared_ptr;
++using std::unique_ptr;
++using std::weak_ptr;
++#define scoped_ptr unique_ptr
++using std::dynamic_pointer_cast;
++template <typename T>
++T* get_pointer(std::shared_ptr<T> const& ptr) {
++  return ptr.get();
++}
++template <typename T>
++T* get_pointer(std::unique_ptr<T> const& ptr) {
++  return ptr.get();
++}
++template <typename T>
++T* get_pointer(std::weak_ptr<T> const& ptr) {
++  return ptr.get();
++}
+ 
+ #define SOFA_PBRPC_VERSION "1.1.1"
+ 
+diff -u -r ./src/sofa/pbrpc/common_internal.h /home/kylin/dev/sofa-pbrpc/src/sofa/pbrpc/common_internal.h
+--- ./src/sofa/pbrpc/common_internal.h	2017-01-20 11:25:28.000000000 +0800
++++ /home/kylin/dev/sofa-pbrpc/src/sofa/pbrpc/common_internal.h	2019-09-30 11:31:11.854634946 +0800
+@@ -9,7 +9,6 @@
+ #include <boost/function.hpp>
+ 
+ #include <sofa/pbrpc/common.h>
+-#include <sofa/pbrpc/atomic.h>
+ #include <sofa/pbrpc/counter.h>
+ #include <sofa/pbrpc/func_tracer.h>
+ #include <sofa/pbrpc/io_service.h>
+diff -u -r ./src/sofa/pbrpc/pbrpc.h /home/kylin/dev/sofa-pbrpc/src/sofa/pbrpc/pbrpc.h
+--- ./src/sofa/pbrpc/pbrpc.h	2017-01-20 11:25:28.000000000 +0800
++++ /home/kylin/dev/sofa-pbrpc/src/sofa/pbrpc/pbrpc.h	2019-09-30 11:31:11.854634946 +0800
+@@ -12,7 +12,6 @@
+ #include <sofa/pbrpc/rpc_client.h>
+ #include <sofa/pbrpc/rpc_server.h>
+ 
+-#include <sofa/pbrpc/atomic.h>
+ #include <sofa/pbrpc/counter.h>
+ #include <sofa/pbrpc/closure.h>
+ #include <sofa/pbrpc/ext_closure.h>
+diff -u -r ./src/sofa/pbrpc/tran_buf_pool.h /home/kylin/dev/sofa-pbrpc/src/sofa/pbrpc/tran_buf_pool.h
+--- ./src/sofa/pbrpc/tran_buf_pool.h	2017-01-20 11:25:28.000000000 +0800
++++ /home/kylin/dev/sofa-pbrpc/src/sofa/pbrpc/tran_buf_pool.h	2019-10-04 23:34:51.421240703 +0800
+@@ -72,7 +72,7 @@
+     // * The block pointed by "p" was allocated by this pool and is in use currently.
+     inline static void add_ref(void * p)
+     {
+-        sofa::pbrpc::atomic_inc(reinterpret_cast<int*>(p) - 1);
++        atomic_inc(reinterpret_cast<int*>(p) - 1);
+     }
+ 
+     // Decrease the reference count of the block.  If the reference count equals
+@@ -82,7 +82,7 @@
+     // * The block pointed by "p" was allocated by this pool and is in use currently.
+     inline static void free(void * p)
+     {
+-        if (sofa::pbrpc::atomic_dec_ret_old(reinterpret_cast<int*>(p) - 1) == 1)
++        if (atomic_dec_ret_old(reinterpret_cast<int*>(p) - 1) == 1)
+         {
+             ::free(reinterpret_cast<int*>(p) - 2);
+         }

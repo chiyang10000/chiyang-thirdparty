@@ -1,0 +1,46 @@
+--- ./src/sofa/pbrpc/spin_lock.h	2017-01-20 11:25:28.000000000 +0800
++++ /opt/dependency-Darwin/package/include/sofa/pbrpc/spin_lock.h	2018-11-23 21:08:17.000000000 +0800
+@@ -6,6 +6,34 @@
+ #define _SOFA_PBRPC_SPIN_LOCK_H_
+ 
+ #ifdef __APPLE__
++
++#include <Availability.h>
++
++#ifdef __MAC_10_12
++
++#include<os/lock.h>
++
++namespace sofa {
++namespace pbrpc {
++
++class SpinLock
++{
++public:
++    SpinLock() { }
++    ~SpinLock() { }
++    void lock() { os_unfair_lock_lock(&_lock); }
++    bool try_lock() { return os_unfair_lock_trylock(&_lock); }
++    void unlock() { os_unfair_lock_unlock(&_lock); }
++
++private:
++    os_unfair_lock_s _lock;
++}; // class SpinLock
++
++}
++}
++
++#else
++
+ #include <libkern/OSAtomic.h>
+ 
+ namespace sofa {
+@@ -27,6 +55,8 @@
+ }
+ }
+ 
++#endif
++
+ #else
+ 
+ #include <pthread.h>
