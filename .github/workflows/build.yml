@@ -12,21 +12,20 @@ jobs:
           java-version: '1.8'
     - name: download
       run: |
-        echo ::set-env name=target::dependency-clang-Darwin-x86_64
-        export PREFIX=/tmp/artifact/$target/package
+        export PREFIX=/tmp/artifact/dependency-clang-Darwin-x86_64/package
         rm -rf $PREFIX
         make download-src > /dev/null
     - name: build
       run: |
-        export PREFIX=/tmp/artifact/$target/package
+        export PREFIX=/tmp/artifact/dependency-clang-Darwin-x86_64/package
         export MAKEFLAGS=-j$((`sysctl -n hw.ncpu`+2))
         make build-apache-hawq-dep > /dev/null
         make build-hawq-dep > /dev/null
     - name: package
       run: |
         cd /tmp/artifact
-        tar cJf $target.tar.xz $target
-        rm -rf $target
+        tar cJf dependency-clang-Darwin-x86_64.tar.xz dependency-clang-Darwin-x86_64
+        rm -rf dependency-clang-Darwin-x86_64
     - uses: actions/upload-artifact@master
       with:
         name: artifact
