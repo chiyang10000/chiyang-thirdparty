@@ -78,6 +78,6 @@ jobs:
         export MAKEFLAGS=-j$((`nproc`+2))
         export CC=gcc
         export CXX=g++
-        make build-libyarn
         make build-apache-hawq-dep > /dev/null
-        make build-hawq-dep > /dev/null
+        # make build-libyarn
+        # make build-hawq-dep > /dev/null
